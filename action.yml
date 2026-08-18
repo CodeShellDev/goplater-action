@@ -1,0 +1,138 @@
+name: Goplater
+description: Run Goplater in your GitHub Actions workflow
+author: CodeShellDev
+
+branding:
+  icon: package
+  color: blue
+
+inputs:
+  version:
+    description: "Goplater version to use (default: 'latest')"
+    required: false
+    default: "latest"
+
+  recursive:
+    description: Recursively template files
+    required: false
+    default: "false"
+
+  flatten:
+    description: Don't preserve source folder structure
+    required: false
+    default: "false"
+
+  allowed-output-folders:
+    description: Folders that are allowed to be outputted to
+    required: false
+    default: ""
+
+  output:
+    description: Output path for templated files
+    required: false
+    default: "."
+
+  source:
+    description: Source path for local files
+    required: false
+    default: "."
+
+  match:
+    description: Regex patterns to match
+    required: false
+    default: ".*"
+
+  whitespace:
+    description: Whitespace removal options
+    required: false
+    default: "l,t"
+
+  verbose:
+    description: Print additional information
+    required: false
+    default: "false"
+
+  ignore-errors:
+    description: Ignore/suppress errors
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+
+  steps:
+    - name: Download Goplater
+      shell: bash
+      env:
+        GOPLATER_VERSION: ${{ inputs.version }}
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        set -euo pipefail
+
+        if [ "$GOPLATER_VERSION" = "latest" ]; then
+          GOPLATER_VERSION="$(
+            curl -fsSL \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/CodeShellDev/goplater/releases/latest |
+            jq -r '.tag_name'
+          )"
+        fi
+
+        case "$(uname -s)" in
+          Linux)
+            os="linux"
+            ;;
+          Darwin)
+            os="darwin"
+            ;;
+          MINGW*|MSYS*|CYGWIN*)
+            os="windows"
+            ;;
+          *)
+            echo "Unsupported operating system: $(uname -s)" >&2
+            exit 1
+            ;;
+        esac
+
+        case "$(uname -m)" in
+          x86_64|amd64)
+            arch="amd64"
+            ;;
+          aarch64|arm64)
+            arch="arm64"
+            ;;
+          *)
+            echo "Unsupported architecture: $(uname -m)" >&2
+            exit 1
+            ;;
+        esac
+
+        extension=""
+        if [ "$os" = "windows" ]; then
+          extension=".exe"
+        fi
+
+        asset="goplater-${GOPLATER_VERSION}-${os}-${arch}${extension}"
+        url="https://github.com/CodeShellDev/goplater/releases/download/${GOPLATER_VERSION}/${asset}"
+
+        echo "Downloading ${asset}"
+
+        curl -fL "$url" \
+          -o "$RUNNER_TEMP/goplater${extension}"
+
+        chmod +x "$RUNNER_TEMP/goplater${extension}"
+
+        echo "goplater-version=${GOPLATER_VERSION}" >> "$GITHUB_OUTPUT"
+
+    - name: Run Goplater
+      shell: bash
+      run: |
+        "$RUNNER_TEMP/goplater" ${{ inputs.template }} \
+            -o=${{ inputs.output }} \
+            -s=${{ inputs.source }} \
+            -r=${{ inputs.recursive }} \
+            -f=${{ inputs.flatten }} \
+            -w=${{ inputs.whitespace }} \
+            --allowed-output-folders=${{ inputs.allowed-output-folders }} \
+            -i
