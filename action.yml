@@ -7,64 +7,45 @@ branding:
   color: blue
 
 inputs:
-  version:
-    description: "Goplater version to use (default: 'latest')"
-    required: false
-    default: "latest"
-
-  recursive:
-    description: Recursively process files
-    required: false
-    default: "false"
-
-  flatten:
-    description: Flatten output INPUT_PATHs without preserving source directory structure
-    required: false
-    default: "false"
-
-  root:
-    description: Source root; output keeps INPUT_PATHs relative to it (default is inferred)
-    required: false
-    default: ""
-
   path:
     description: File or directory to template
-    required: true
-
-  output:
-    description: Output directory for templated files
-    required: false
     default: "."
+
+  version:
+    description: Goplater version to use
+    default: "latest"
 
   source:
     description: Source directory containing files
-    required: false
     default: "."
 
-  allowed-outputs:
-    description: Allowed output directories, including their subdirectories (comma-separated list)
-    required: false
+  output:
+    description: Output directory for templated files
+    default: "."
+
+  recursive:
+    description: Recursively process files
+    default: "false"
+
+  flatten:
+    description: Flatten output paths
+    default: "false"
+
+  root:
+    description: Source root; output paths are relative to it (default is inferred)
     default: ""
 
   match:
-    description: Regular expressions used to match files for processing
-    required: false
+    description: Regular expressions used to match files
     default: ".*"
 
+  allowed-outputs:
+    description: Comma-separated allowed output directories
+    default: ""
+
   trim-max-blank-lines:
-    description: "Experimental: maximum blank lines kept around non-output actions (-1 disables trimming)"
-    required: false
+    description: Maximum blank lines kept around non-output actions (-1 = off)
     default: "-1"
-
-  dry-run:
-    description: Show what would be written without changing anything
-    required: false
-    default: "false"
-
-  ignore-errors:
-    description: Continue processing when errors occur
-    required: false
-    default: "false"
 
 runs:
   using: composite

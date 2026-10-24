@@ -1,0 +1,542 @@
+name: Goplater Bot
+
+# Template variables (usable in commit-message, pr-title, pr-body):
+#   {{ repository }} {{ repository_url }} {{ server_url }}
+#   {{ base }} {{ branch }} {{ branch_url }}
+#   {{ actor }} {{ actor_url }}
+#   {{ sha }} {{ short_sha }} {{ sha_url }}
+#   {{ run_id }} {{ run_url }} {{ workflow }} {{ event }}
+#   {{ goplater_version }} {{ date }}
+#   {{ changed_files_count }} {{ added_count }} {{ modified_count }} {{ deleted_count }}
+#   {{ changed_files }}       comma separated, as code
+#   {{ changed_files_list }}  bullet list, linked to the PR branch (plain in commit messages)
+
+on:
+  workflow_call:
+    inputs:
+      # Goplater
+      path:
+        description: File or directory to template
+        type: string
+        default: "."
+
+      version:
+        description: Goplater version to use
+        type: string
+        default: "latest"
+
+      source:
+        description: Source directory containing files
+        type: string
+        default: "."
+
+      output:
+        description: Output directory for templated files
+        type: string
+        default: "."
+
+      recursive:
+        description: Recursively process files
+        type: boolean
+        default: false
+
+      flatten:
+        description: Flatten output paths
+        type: boolean
+        default: false
+
+      root:
+        description: Source root; output paths are relative to it (default is inferred)
+        type: string
+        default: ""
+
+      match:
+        description: Regular expressions used to match files
+        type: string
+        default: ".*"
+
+      allowed-outputs:
+        description: Comma-separated allowed output directories
+        type: string
+        default: ""
+
+      trim-max-blank-lines:
+        description: Maximum blank lines kept around non-output actions (-1 = off)
+        type: number
+        default: -1
+
+      # Git behavior
+      commit-and-push:
+        description: Try to commit generated changes and push them directly
+        type: boolean
+        default: true
+
+      create-pr:
+        description: Create a pull request if direct commit and push fails
+        type: boolean
+        default: true
+
+      branch:
+        description: Branch to use when creating a pull request
+        type: string
+        default: "goplater/generated-updates"
+
+      base:
+        description: Base branch for a pull request; defaults to the current branch
+        type: string
+        default: ""
+
+      # Commit identity
+      commit-message:
+        description: Commit message template
+        type: string
+        default: "chore: update generated files"
+
+      author-name:
+        description: Git author name; defaults to the latest commit author
+        type: string
+        default: ""
+
+      author-email:
+        description: Git author email; defaults to the latest commit author
+        type: string
+        default: ""
+
+      coauthor-username:
+        description: >
+          GitHub username (or app slug like "my-app[bot]") of the co-author.
+          Its noreply email is resolved automatically, so the avatar shows up.
+        type: string
+        default: "goplater[bot]"
+
+      coauthor-name:
+        description: Co-author display name; defaults to the username
+        type: string
+        default: "goplater"
+
+      coauthor-email:
+        description: Co-author email; overrides the resolved noreply email
+        type: string
+        default: ""
+
+      # Pull request
+      pr-title:
+        description: Pull request title template
+        type: string
+        default: "chore: update generated files"
+
+      pr-body:
+        description: Pull request body template
+        type: string
+        default: |
+          ## Generated updates
+
+          Goplater generated {{ changed_files_count }} file change(s)
+          ({{ added_count }} added, {{ modified_count }} modified, {{ deleted_count }} deleted).
+
+          ### Changed files
+
+          {{ changed_files_list }}
+
+          ### Details
+
+          | | |
+          |---|---|
+          | **Repository** | [{{ repository }}]({{ repository_url }}) |
+          | **Base** | `{{ base }}` |
+          | **Branch** | [`{{ branch }}`]({{ branch_url }}) |
+          | **Triggered by** | [{{ actor }}]({{ actor_url }}) |
+          | **Commit** | [`{{ short_sha }}`]({{ sha_url }}) |
+          | **Goplater** | {{ goplater_version }} |
+
+          [View workflow run]({{ run_url }})
+
+      pr-assignees:
+        description: Comma-separated GitHub usernames to assign
+        type: string
+        default: ""
+
+      pr-reviewers:
+        description: Comma-separated GitHub usernames to request reviews from
+        type: string
+        default: ""
+
+      pr-labels:
+        description: Comma-separated labels
+        type: string
+        default: ""
+
+      pr-draft:
+        description: Create the pull request as a draft
+        type: boolean
+        default: false
+
+      delete-branch:
+        description: Delete the generated branch after the pull request is merged
+        type: boolean
+        default: true
+
+      dry-run:
+        description: Generate changes without committing, pushing, or creating a PR
+        type: boolean
+        default: false
+
+    secrets:
+      token:
+        description: PAT or GitHub App token (needed if PRs/pushes must trigger other workflows)
+        required: false
+
+    outputs:
+      changed:
+        description: Whether Goplater generated changes
+        value: ${{ jobs.goplater.outputs.changed }}
+
+      pushed:
+        description: Whether changes were pushed directly
+        value: ${{ jobs.goplater.outputs.pushed }}
+
+      pull-request-url:
+        description: URL of the created or updated pull request
+        value: ${{ jobs.goplater.outputs.pull-request-url }}
+
+      pull-request-number:
+        description: Number of the created or updated pull request
+        value: ${{ jobs.goplater.outputs.pull-request-number }}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  goplater:
+    runs-on: ubuntu-latest
+
+    # Loop guard: ignore our own commits and our own PR branch
+    if: >-
+      ${{ !contains(github.event.head_commit.message, 'Goplater-Generated: true')
+      && github.head_ref != inputs.branch }}
+
+    concurrency:
+      group: goplater-${{ github.repository }}-${{ github.head_ref || github.ref_name }}
+      cancel-in-progress: false
+
+    outputs:
+      changed: ${{ steps.changes.outputs.changed }}
+      pushed: ${{ steps.push.outputs.pushed }}
+      pull-request-url: ${{ steps.pr.outputs.pull-request-url }}
+      pull-request-number: ${{ steps.pr.outputs.pull-request-number }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # check out the branch, not the detached PR merge ref, so pushing works
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.token || github.token }}
+          fetch-depth: 0
+
+      - name: Run Goplater
+        uses: codeshelldev/goplater-action@v0.0.5
+        with:
+          path: ${{ inputs.path }}
+          version: ${{ inputs.version }}
+          source: ${{ inputs.source }}
+          output: ${{ inputs.output }}
+          recursive: ${{ inputs.recursive }}
+          flatten: ${{ inputs.flatten }}
+          root: ${{ inputs.root }}
+          match: ${{ inputs.match }}
+          allowed-outputs: ${{ inputs.allowed-outputs }}
+          trim-max-blank-lines: ${{ inputs.trim-max-blank-lines }}
+
+      - name: Check for changes
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # git diff misses new untracked files, status does not
+          if [ -z "$(git status --porcelain --untracked-files=all)" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No changes generated."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "Generated changes detected."
+          fi
+
+      - name: Resolve identities
+        id: identity
+        if: ${{ steps.changes.outputs.changed == 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.token || github.token }}
+          AUTHOR_NAME: ${{ inputs.author-name }}
+          AUTHOR_EMAIL: ${{ inputs.author-email }}
+          COAUTHOR_USERNAME: ${{ inputs.coauthor-username }}
+          COAUTHOR_NAME: ${{ inputs.coauthor-name }}
+          COAUTHOR_EMAIL: ${{ inputs.coauthor-email }}
+        run: |
+          set -euo pipefail
+
+          [ -n "$AUTHOR_NAME" ]  || AUTHOR_NAME="$(git log -1 --format='%an')"
+          [ -n "$AUTHOR_EMAIL" ] || AUTHOR_EMAIL="$(git log -1 --format='%ae')"
+
+          # noreply email linked to the account = real avatar on the commit
+          if [ -n "$COAUTHOR_USERNAME" ] && [ -z "$COAUTHOR_EMAIL" ]; then
+            encoded="$(jq -rn --arg u "$COAUTHOR_USERNAME" '$u|@uri')"
+            user_id="$(gh api "users/${encoded}" --jq .id)"
+            COAUTHOR_EMAIL="${user_id}+${COAUTHOR_USERNAME}@users.noreply.github.com"
+          fi
+
+          trailer=""
+          if [ -n "$COAUTHOR_EMAIL" ]; then
+            [ -n "$COAUTHOR_NAME" ] || COAUTHOR_NAME="${COAUTHOR_USERNAME:-Goplater}"
+            trailer="Co-authored-by: ${COAUTHOR_NAME} <${COAUTHOR_EMAIL}>"
+          fi
+
+          git config user.name "$AUTHOR_NAME"
+          git config user.email "$AUTHOR_EMAIL"
+
+          {
+            echo "author_name=$AUTHOR_NAME"
+            echo "author_email=$AUTHOR_EMAIL"
+            echo "coauthor_trailer=$trailer"
+          } >> "$GITHUB_OUTPUT"
+
+          echo "Author:    $AUTHOR_NAME <$AUTHOR_EMAIL>"
+          echo "Co-author: ${trailer:-none}"
+
+      - name: Render templates
+        id: meta
+        if: ${{ steps.changes.outputs.changed == 'true' }}
+        shell: python3 {0}
+        env:
+          COMMIT_TEMPLATE: ${{ inputs.commit-message }}
+          TITLE_TEMPLATE: ${{ inputs.pr-title }}
+          BODY_TEMPLATE: ${{ inputs.pr-body }}
+          COAUTHOR_TRAILER: ${{ steps.identity.outputs.coauthor_trailer }}
+          SERVER_URL: ${{ github.server_url }}
+          REPOSITORY: ${{ github.repository }}
+          BRANCH: ${{ inputs.branch }}
+          BASE: ${{ inputs.base || github.head_ref || github.ref_name }}
+          ACTOR: ${{ github.actor }}
+          SHA: ${{ github.sha }}
+          RUN_ID: ${{ github.run_id }}
+          WORKFLOW: ${{ github.workflow }}
+          EVENT: ${{ github.event_name }}
+          GOPLATER_VERSION: ${{ inputs.version }}
+        run: |
+          import datetime
+          import os
+          import re
+          import subprocess
+          import urllib.parse as up
+          import uuid
+
+          env = os.environ
+          server = env["SERVER_URL"]
+          repo = env["REPOSITORY"]
+          branch = env["BRANCH"]
+          sha = env["SHA"]
+
+
+          def changed_files():
+              out = subprocess.run(
+                  ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+                  check=True, capture_output=True, text=True,
+              ).stdout.split("\0")
+
+              files, i = [], 0
+              while i < len(out):
+                  entry = out[i]
+                  i += 1
+                  if len(entry) < 4:
+                      continue
+                  xy, path = entry[:2], entry[3:]
+                  if "R" in xy or "C" in xy:
+                      i += 1  # skip original path of rename/copy
+                  if xy == "??" or "A" in xy:
+                      status = "added"
+                  elif "D" in xy:
+                      status = "deleted"
+                  else:
+                      status = "modified"
+                  files.append((status, path))
+              return files
+
+
+          files = changed_files()
+
+
+          def file_list(links):
+              lines = []
+              for status, path in files:
+                  if status == "deleted":
+                      lines.append(f"- ~~`{path}`~~ (deleted)")
+                  elif links:
+                      url = f"{server}/{repo}/blob/{up.quote(branch)}/{up.quote(path)}"
+                      lines.append(f"- [`{path}`]({url}) ({status})")
+                  else:
+                      lines.append(f"- `{path}` ({status})")
+              return "\n".join(lines)
+
+
+          def values(links):
+              count = lambda s: str(sum(1 for st, _ in files if st == s))
+              return {
+                  "repository": repo,
+                  "repository_url": f"{server}/{repo}",
+                  "server_url": server,
+                  "base": env["BASE"],
+                  "branch": branch,
+                  "branch_url": f"{server}/{repo}/tree/{up.quote(branch)}",
+                  "actor": env["ACTOR"],
+                  "actor_url": f"{server}/{env['ACTOR']}",
+                  "sha": sha,
+                  "short_sha": sha[:7],
+                  "sha_url": f"{server}/{repo}/commit/{sha}",
+                  "run_id": env["RUN_ID"],
+                  "run_url": f"{server}/{repo}/actions/runs/{env['RUN_ID']}",
+                  "workflow": env["WORKFLOW"],
+                  "event": env["EVENT"],
+                  "goplater_version": env["GOPLATER_VERSION"],
+                  "date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d"),
+                  "changed_files_count": str(len(files)),
+                  "added_count": count("added"),
+                  "modified_count": count("modified"),
+                  "deleted_count": count("deleted"),
+                  "changed_files": ", ".join(f"`{p}`" for _, p in files),
+                  "changed_files_list": file_list(links),
+              }
+
+
+          def render(template, vals):
+              def sub(m):
+                  key = m.group(1)
+                  if key in vals:
+                      return vals[key]
+                  print(f"::warning::Unknown template variable: {key}")
+                  return m.group(0)
+
+              return re.sub(r"\{\{\s*([A-Za-z_]+)\s*\}\}", sub, template)
+
+
+          plain, linked = values(False), values(True)
+
+          trailers = ["Goplater-Generated: true"]
+          if env.get("COAUTHOR_TRAILER"):
+              trailers.append(env["COAUTHOR_TRAILER"])
+
+          commit_message = render(env["COMMIT_TEMPLATE"], plain).strip()
+          commit_message += "\n\n" + "\n".join(trailers)
+
+          title = " ".join(render(env["TITLE_TEMPLATE"], plain).split())
+          body = render(env["BODY_TEMPLATE"], linked)
+
+          # temp dir: files here are not part of the work tree, never committed
+          tmp = env["RUNNER_TEMP"]
+          commit_file = os.path.join(tmp, "goplater-commit-message.txt")
+          body_file = os.path.join(tmp, "goplater-pr-body.md")
+
+          with open(commit_file, "w", encoding="utf-8") as f:
+              f.write(commit_message + "\n")
+          with open(body_file, "w", encoding="utf-8") as f:
+              f.write(body)
+
+          delim = uuid.uuid4().hex
+          with open(env["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"commit_file={commit_file}\n")
+              f.write(f"body_file={body_file}\n")
+              f.write(f"title={title}\n")
+              f.write(f"commit_message<<{delim}\n{commit_message}\n{delim}\n")
+
+          with open(env["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as f:
+              f.write("## Goplater changes\n\n")
+              f.write(file_list(True) + "\n")
+
+      - name: Commit generated changes
+        id: commit
+        if: ${{ !inputs.dry-run && inputs.commit-and-push && steps.changes.outputs.changed == 'true' }}
+        shell: bash
+        env:
+          COMMIT_FILE: ${{ steps.meta.outputs.commit_file }}
+        run: |
+          set -euo pipefail
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "committed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git commit -F "$COMMIT_FILE"
+          echo "committed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Push generated commit
+        id: push
+        if: ${{ !inputs.dry-run && inputs.commit-and-push && steps.commit.outputs.committed == 'true' }}
+        shell: bash
+        env:
+          REF_NAME: ${{ github.head_ref || github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          if git push origin "HEAD:refs/heads/${REF_NAME}"; then
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+            echo "Generated changes pushed successfully."
+          else
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            echo "Direct push failed."
+          fi
+
+      - name: Restore changes for PR fallback
+        if: ${{ !inputs.dry-run && inputs.create-pr && steps.commit.outputs.committed == 'true' && steps.push.outputs.pushed != 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # commit exists locally but was not pushed:
+          # drop the commit, keep all generated changes in the work tree
+          git reset --soft HEAD~1
+          git reset
+
+      - name: Create or update pull request
+        id: pr
+        if: ${{ !inputs.dry-run && inputs.create-pr && steps.changes.outputs.changed == 'true' && steps.push.outputs.pushed != 'true' }}
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.token || github.token }}
+          branch: ${{ inputs.branch }}
+          base: ${{ inputs.base || github.head_ref || github.ref_name }}
+          commit-message: ${{ steps.meta.outputs.commit_message }}
+          author: ${{ steps.identity.outputs.author_name }} <${{ steps.identity.outputs.author_email }}>
+          title: ${{ steps.meta.outputs.title }}
+          body-path: ${{ steps.meta.outputs.body_file }}
+          assignees: ${{ inputs.pr-assignees }}
+          reviewers: ${{ inputs.pr-reviewers }}
+          labels: ${{ inputs.pr-labels }}
+          draft: ${{ inputs.pr-draft }}
+          delete-branch: ${{ inputs.delete-branch }}
+
+      - name: Report generated changes
+        if: ${{ !inputs.dry-run && steps.changes.outputs.changed == 'true' && !inputs.commit-and-push && !inputs.create-pr }}
+        shell: bash
+        run: |
+          echo "::warning::Goplater generated changes, but both commit-and-push and create-pr are disabled."
+
+      - name: Report dry run
+        if: ${{ inputs.dry-run && steps.changes.outputs.changed == 'true' }}
+        shell: bash
+        env:
+          TITLE: ${{ steps.meta.outputs.title }}
+          COMMIT_FILE: ${{ steps.meta.outputs.commit_file }}
+          BODY_FILE: ${{ steps.meta.outputs.body_file }}
+        run: |
+          echo "Goplater generated changes (dry run; no Git operations performed)."
+          echo
+          git status --short --untracked-files=all
+          echo
+          echo "--- commit message ---"; cat "$COMMIT_FILE"
+          echo "--- PR title ---";       echo "$TITLE"
+          echo "--- PR body ---";        cat "$BODY_FILE"
