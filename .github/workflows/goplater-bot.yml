@@ -180,7 +180,17 @@ on:
         type: boolean
         default: false
 
+      # GitHub App
+      client-id:
+        description: GitHub app client id that should be used for creating an access token
+        type: string
+        default: ""
+
     secrets:
+      app_private_key:
+        description: GitHub app private key used to create an access token
+        required: false
+
       token:
         description: PAT or GitHub App token (needed if PRs/pushes must trigger other workflows)
         required: false
@@ -226,12 +236,20 @@ jobs:
       pull-request-number: ${{ steps.pr.outputs.pull-request-number }}
 
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        if: ${{ inputs.client-id != '' }}
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ inputs.client-id }}
+          private-key: ${{ secrets.app_private_key }}
+
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
           # check out the branch, not the detached PR merge ref, so pushing works
           ref: ${{ github.head_ref || github.ref_name }}
-          token: ${{ secrets.token || github.token }}
+          token: ${{ steps.app-token.outputs.token || secrets.token || github.token }}
           fetch-depth: 0
 
       - name: Run Goplater
@@ -268,7 +286,7 @@ jobs:
         if: ${{ steps.changes.outputs.changed == 'true' }}
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.token || github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.token || github.token }}
           AUTHOR_NAME: ${{ inputs.author-name }}
           AUTHOR_EMAIL: ${{ inputs.author-email }}
           COAUTHOR_USERNAME: ${{ inputs.coauthor-username }}
@@ -505,7 +523,7 @@ jobs:
         if: ${{ !inputs.dry-run && inputs.create-pr && steps.changes.outputs.changed == 'true' && steps.push.outputs.pushed != 'true' }}
         uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.token || github.token }}
+          token: ${{ steps.app-token.outputs.token || secrets.token || github.token }}
           branch: ${{ inputs.branch }}
           base: ${{ inputs.base || github.head_ref || github.ref_name }}
           commit-message: ${{ steps.meta.outputs.commit_message }}
