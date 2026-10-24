@@ -47,6 +47,16 @@ inputs:
     description: Maximum blank lines kept around non-output actions (-1 = off)
     default: "-1"
 
+  dry-run:
+    description: Show what would be written without changing anything
+    required: false
+    default: "false"
+
+  ignore-errors:
+    description: Continue processing when errors occur
+    required: false
+    default: "false"
+
 runs:
   using: composite
   steps:

@@ -59,6 +59,8 @@ By default, this templates the current directory and writes the generated files 
 | `match`                | Regular expressions used to match files                            | `.*`     |
 | `allowed-outputs`      | Comma-separated allowed output directories                         | `""`     |
 | `trim-max-blank-lines` | Maximum blank lines kept around non-output actions (`-1` = off)    | `-1`     |
+| `dry-run`              | Show what would be written without changing anything               | `false`  |
+| `ignore-errors`        | Continue processing when errors occur                              | `false`  |
 
 ## Examples
 
