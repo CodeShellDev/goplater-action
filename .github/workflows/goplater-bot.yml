@@ -129,25 +129,23 @@ on:
         description: Pull request body template
         type: string
         default: |
-          ## Generated updates
+          # Automated Update
 
-          Goplater generated {{ changed_files_count }} file change(s)
-          ({{ added_count }} added, {{ modified_count }} modified, {{ deleted_count }} deleted).
+          [Goplater](https://github.com/codeshelldev/goplater) generated {{ changed_files_count }} file change(s) ({{ added_count }} added, {{ modified_count }} modified, {{ deleted_count }} deleted).
 
-          ### Changed files
+          ## Changed files
 
           {{ changed_files_list }}
 
-          ### Details
+          ## Details
 
           | | |
           |---|---|
           | **Repository** | [{{ repository }}]({{ repository_url }}) |
           | **Base** | `{{ base }}` |
           | **Branch** | [`{{ branch }}`]({{ branch_url }}) |
-          | **Triggered by** | [{{ actor }}]({{ actor_url }}) |
+          | **Triggered by** | @{{ actor }} |
           | **Commit** | [`{{ short_sha }}`]({{ sha_url }}) |
-          | **Goplater** | {{ goplater_version }} |
 
           [View workflow run]({{ run_url }})
 
