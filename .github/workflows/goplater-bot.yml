@@ -208,15 +208,6 @@ permissions:
   pull-requests: write
 
 jobs:
-  diagnose:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Test
-        run: |
-          echo "Running..."
-          echo "Repository $GITHUB_REPOSITORY"
-          echo "Event $GITHUB_EVENT_NAME"
-
   goplater:
     runs-on: ubuntu-latest
 
