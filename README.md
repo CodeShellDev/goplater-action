@@ -13,13 +13,16 @@ flatten: false
 # Source root; output keeps paths relative to it (default is inferred)
 root: ""
 
+# File or directory to template (required)
+path: ""
+
 # Source directory containing files
 source: "."
 
 # Output directory for templated files
 output: "."
 
-# Allowed output directories, including their subdirectories
+# Allowed output directories, including their subdirectories (comma-separated list)
 allowed-outputs: ""
 
 # Regular expressions used to match files for processing

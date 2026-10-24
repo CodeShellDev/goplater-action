@@ -18,14 +18,18 @@ inputs:
     default: "false"
 
   flatten:
-    description: Flatten output paths without preserving source directory structure
+    description: Flatten output INPUT_PATHs without preserving source directory structure
     required: false
     default: "false"
 
   root:
-    description: Source root; output keeps paths relative to it (default is inferred)
+    description: Source root; output keeps INPUT_PATHs relative to it (default is inferred)
     required: false
     default: ""
+
+  path:
+    description: File or directory to template
+    required: true
 
   output:
     description: Output directory for templated files
@@ -38,7 +42,7 @@ inputs:
     default: "."
 
   allowed-outputs:
-    description: Allowed output directories, including their subdirectories
+    description: Allowed output directories, including their subdirectories (comma-separated list)
     required: false
     default: ""
 
@@ -130,6 +134,7 @@ runs:
         RECURSIVE: ${{ inputs.recursive }}
         FLATTEN: ${{ inputs.flatten }}
         ROOT: ${{ inputs.root }}
+        INPUT_PATH: ${{ inputs.path }}
         OUTPUT: ${{ inputs.output }}
         SOURCE: ${{ inputs.source }}
         ALLOWED_OUTPUTS: ${{ inputs.allowed-outputs }}
@@ -141,8 +146,11 @@ runs:
         set -euo pipefail
 
         args=(
+          "$INPUT_PATH"
           "--recursive=$RECURSIVE"
           "--flatten=$FLATTEN"
+          "--root=$ROOT"
+          "--allowed-outputs=$ALLOWED_OUTPUTS"
           "--output=$OUTPUT"
           "--source=$SOURCE"
           "--match=$MATCH"
@@ -150,16 +158,5 @@ runs:
           "--dry-run=$DRY_RUN"
           "--ignore-errors=$IGNORE_ERRORS"
         )
-
-        if [ -n "$ROOT" ]; then
-          args+=("--root=$ROOT")
-        fi
-
-        if [ -n "$ALLOWED_OUTPUTS" ]; then
-          IFS=',' read -r -a allowed_outputs <<< "$ALLOWED_OUTPUTS"
-          for allowed_output in "${allowed_outputs[@]}"; do
-            args+=("--allowed-outputs=$allowed_output")
-          done
-        fi
 
         "$GOPLATER_BINARY" template "${args[@]}"
