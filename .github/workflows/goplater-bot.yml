@@ -147,6 +147,7 @@ on:
           | **Triggered by** | @{{ actor }} |
           | **Commit** | [`{{ short_sha }}`]({{ sha_url }}) |
 
+          <br/>
           [View workflow run]({{ run_url }})
 
       pr-assignees:
