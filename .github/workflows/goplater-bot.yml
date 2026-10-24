@@ -211,11 +211,6 @@ jobs:
   goplater:
     runs-on: ubuntu-latest
 
-    # Loop guard: ignore our own commits and our own PR branch
-    if: >-
-      ${{ !contains(github.event.head_commit.message, 'Goplater-Generated: true')
-      && github.head_ref != inputs.branch }}
-
     concurrency:
       group: goplater-${{ github.repository }}-${{ github.head_ref || github.ref_name }}
       cancel-in-progress: false
@@ -228,7 +223,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v7
         with:
           # check out the branch, not the detached PR merge ref, so pushing works
           ref: ${{ github.head_ref || github.ref_name }}
