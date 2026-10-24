@@ -147,7 +147,6 @@ on:
           | **Triggered by** | @{{ actor }} |
           | **Commit** | [`{{ short_sha }}`]({{ sha_url }}) |
 
-          <br/>
           [View workflow run]({{ run_url }})
 
       pr-assignees:
@@ -317,6 +316,7 @@ jobs:
           {
             echo "author_name=$AUTHOR_NAME"
             echo "author_email=$AUTHOR_EMAIL"
+            echo "coauthor_email=$COAUTHOR_EMAIL"
             echo "coauthor_trailer=$trailer"
           } >> "$GITHUB_OUTPUT"
 
@@ -535,6 +535,7 @@ jobs:
           labels: ${{ inputs.pr-labels }}
           draft: ${{ inputs.pr-draft }}
           delete-branch: ${{ inputs.delete-branch }}
+          committer: ${{ inputs.coauthor-name }} <${{ steps.identity.outputs.coauthor_email }}>
 
       - name: Report generated changes
         if: ${{ !inputs.dry-run && steps.changes.outputs.changed == 'true' && !inputs.commit-and-push && !inputs.create-pr }}
