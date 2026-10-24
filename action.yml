@@ -162,4 +162,4 @@ runs:
           done
         fi
 
-        "$GOPLATER_BINARY" "${args[@]}"
+        "$GOPLATER_BINARY" template "${args[@]}"
