@@ -255,6 +255,9 @@ jobs:
         run: |
           set -euo pipefail
 
+          pwd
+          ls -la
+
           # git diff misses new untracked files, status does not
           if [ -z "$(git status --porcelain --untracked-files=all)" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
