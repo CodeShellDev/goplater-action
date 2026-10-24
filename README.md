@@ -1,30 +1,36 @@
 # goplater-action
 
 ```yaml
-# Goplater version to use (default: 'latest')"
+# Goplater version to use (default: 'latest')
 version: latest
 
-# Recursively template files
+# Recursively process files
 recursive: false
 
-# Don't preserve source folder structure
+# Flatten output paths without preserving source directory structure
 flatten: false
 
-# Folders that are allowed to be outputted to
-allowed-output-folders: ""
+# Source root; output keeps paths relative to it (default is inferred)
+root: ""
 
-# Output path for templated files
+# Source directory containing files
+source: "."
+
+# Output directory for templated files
 output: "."
 
-# Regex patterns to match
+# Allowed output directories, including their subdirectories
+allowed-outputs: ""
+
+# Regular expressions used to match files for processing
 match: ".*"
 
-# Whitespace removal options ("l": leading, "t": trailing)
-whitespace: "l,t"
+# Experimental: maximum blank lines kept around non-output actions (-1 disables trimming)
+trim-max-blank-lines: -1
 
-# Print additional information
-verbose: false
+# Show what would be written without changing anything
+dry-run: false
 
-# Suppress errors
+# Continue processing when errors occur
 ignore-errors: false
 ```
