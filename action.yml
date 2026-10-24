@@ -13,55 +13,60 @@ inputs:
     default: "latest"
 
   recursive:
-    description: Recursively template files
+    description: Recursively process files
     required: false
     default: "false"
 
   flatten:
-    description: Don't preserve source folder structure
+    description: Flatten output paths without preserving source directory structure
     required: false
     default: "false"
 
-  allowed-output-folders:
-    description: Folders that are allowed to be outputted to
+  root:
+    description: Source root; output keeps paths relative to it (default is inferred)
     required: false
     default: ""
 
   output:
-    description: Output path for templated files
+    description: Output directory for templated files
     required: false
     default: "."
 
   source:
-    description: Source path for local files
+    description: Source directory containing files
     required: false
     default: "."
 
+  allowed-outputs:
+    description: Allowed output directories, including their subdirectories
+    required: false
+    default: ""
+
   match:
-    description: Regex patterns to match
+    description: Regular expressions used to match files for processing
     required: false
     default: ".*"
 
-  whitespace:
-    description: Whitespace removal options
+  trim-max-blank-lines:
+    description: "Experimental: maximum blank lines kept around non-output actions (-1 disables trimming)"
     required: false
-    default: "l,t"
+    default: "-1"
 
-  verbose:
-    description: Print additional information
+  dry-run:
+    description: Show what would be written without changing anything
     required: false
     default: "false"
 
   ignore-errors:
-    description: Suppress errors
+    description: Continue processing when errors occur
     required: false
     default: "false"
 
 runs:
   using: composite
-
   steps:
     - name: Download Goplater
+      id: download
       shell: bash
       env:
         GOPLATER_VERSION: ${{ inputs.version }}
@@ -77,18 +82,17 @@ runs:
               https://api.github.com/repos/CodeShellDev/goplater/releases/latest |
             jq -r '.tag_name'
           )"
+
+          if [ -z "$GOPLATER_VERSION" ] || [ "$GOPLATER_VERSION" = "null" ]; then
+            echo "Failed to determine the latest Goplater version" >&2
+            exit 1
+          fi
         fi
 
         case "$(uname -s)" in
-          Linux)
-            os="linux"
-            ;;
-          Darwin)
-            os="darwin"
-            ;;
-          MINGW*|MSYS*|CYGWIN*)
-            os="windows"
-            ;;
+          Linux) os="linux" ;;
+          Darwin) os="darwin" ;;
+          MINGW*|MSYS*|CYGWIN*) os="windows" ;;
           *)
             echo "Unsupported operating system: $(uname -s)" >&2
             exit 1
@@ -96,12 +100,8 @@ runs:
         esac
 
         case "$(uname -m)" in
-          x86_64|amd64)
-            arch="amd64"
-            ;;
-          aarch64|arm64)
-            arch="arm64"
-            ;;
+          x86_64|amd64) arch="amd64" ;;
+          aarch64|arm64) arch="arm64" ;;
           *)
             echo "Unsupported architecture: $(uname -m)" >&2
             exit 1
@@ -115,24 +115,51 @@ runs:
 
         asset="goplater-${GOPLATER_VERSION}-${os}-${arch}${extension}"
         url="https://github.com/CodeShellDev/goplater/releases/download/${GOPLATER_VERSION}/${asset}"
+        binary="$RUNNER_TEMP/goplater${extension}"
 
         echo "Downloading ${asset}"
+        curl -fL "$url" -o "$binary"
+        chmod +x "$binary"
 
-        curl -fL "$url" \
-          -o "$RUNNER_TEMP/goplater${extension}"
-
-        chmod +x "$RUNNER_TEMP/goplater${extension}"
-
-        echo "goplater-version=${GOPLATER_VERSION}" >> "$GITHUB_OUTPUT"
+        echo "binary=$binary" >> "$GITHUB_OUTPUT"
 
     - name: Run Goplater
       shell: bash
+      env:
+        GOPLATER_BINARY: ${{ steps.download.outputs.binary }}
+        RECURSIVE: ${{ inputs.recursive }}
+        FLATTEN: ${{ inputs.flatten }}
+        ROOT: ${{ inputs.root }}
+        OUTPUT: ${{ inputs.output }}
+        SOURCE: ${{ inputs.source }}
+        ALLOWED_OUTPUTS: ${{ inputs.allowed-outputs }}
+        MATCH: ${{ inputs.match }}
+        TRIM_MAX_BLANK_LINES: ${{ inputs.trim-max-blank-lines }}
+        DRY_RUN: ${{ inputs.dry-run }}
+        IGNORE_ERRORS: ${{ inputs.ignore-errors }}
       run: |
-        "$RUNNER_TEMP/goplater" ${{ inputs.template }} \
-            -o=${{ inputs.output }} \
-            -s=${{ inputs.source }} \
-            -r=${{ inputs.recursive }} \
-            -f=${{ inputs.flatten }} \
-            -w=${{ inputs.whitespace }} \
-            --allowed-output-folders=${{ inputs.allowed-output-folders }} \
-            -i
+        set -euo pipefail
+
+        args=(
+          "--recursive=$RECURSIVE"
+          "--flatten=$FLATTEN"
+          "--output=$OUTPUT"
+          "--source=$SOURCE"
+          "--match=$MATCH"
+          "--trim-max-blank-lines=$TRIM_MAX_BLANK_LINES"
+          "--dry-run=$DRY_RUN"
+          "--ignore-errors=$IGNORE_ERRORS"
+        )
+
+        if [ -n "$ROOT" ]; then
+          args+=("--root=$ROOT")
+        fi
+
+        if [ -n "$ALLOWED_OUTPUTS" ]; then
+          IFS=',' read -r -a allowed_outputs <<< "$ALLOWED_OUTPUTS"
+          for allowed_output in "${allowed_outputs[@]}"; do
+            args+=("--allowed-outputs=$allowed_output")
+          done
+        fi
+
+        "$GOPLATER_BINARY" "${args[@]}"
