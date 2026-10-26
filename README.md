@@ -4,6 +4,8 @@ Run [Goplater](https://github.com/CodeShellDev/goplater) in your GitHub Actions 
 
 Goplater templates files and directories using Go templates, with support for recursive processing, output path control, matching, and automatic blank-line handling.
 
+Searching for `Goplater Bot`? Get the reusable workflow at `github.com/codeshelldev/goplater-action/.github/workflows/goplater-bot.yml`!
+
 ## Usage
 
 The simplest setup is:
