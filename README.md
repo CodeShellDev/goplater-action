@@ -6,7 +6,7 @@ Goplater templates files and directories using Go templates, with support for re
 
 > [!IMPORTANT]
 > Searching for **Goplater Bot**?
-> Get the reusable workflow at `github.com/codeshelldev/goplater-action/.github/workflows/goplater-bot.yml`!
+> Get the reusable workflow at <br> `github.com/codeshelldev/goplater-action/.github/workflows/goplater-bot.yml`!
 
 ## Usage
 
