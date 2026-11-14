@@ -69,20 +69,32 @@ runs:
       run: |
         set -euo pipefail
 
-        if [ "$GOPLATER_VERSION" = "latest" ] || [ "$GOPLATER_VERSION" = "latest-prerelease" ]; then
-          if [ "$GOPLATER_VERSION" = "latest-prerelease" ]; then
-            release_type="prereleases"
-          else
-            release_type="latest"
-          fi
+        if [ "$GOPLATER_VERSION" = "latest" ]; then
+          release_url="https://api.github.com/repos/CodeShellDev/goplater/releases/latest"
+        elif [ "$GOPLATER_VERSION" = "latest-prerelease" ]; then
+          release_url="https://api.github.com/repos/CodeShellDev/goplater/releases?per_page=1"
+        else
+          release_url=""
+        fi
         
-          GOPLATER_VERSION="$(
-            curl -fsSL \
-              -H "Authorization: Bearer $GH_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/CodeShellDev/goplater/releases/$release_type" |
-            jq -r '.tag_name'
-          )"
+        if [ -n "$release_url" ]; then
+          if [ "$GOPLATER_VERSION" = "latest" ]; then
+            GOPLATER_VERSION="$(
+              curl -fsSL \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "$release_url" |
+              jq -r '.tag_name'
+            )"
+          else
+            GOPLATER_VERSION="$(
+              curl -fsSL \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "$release_url" |
+              jq -r '.[0].tag_name'
+            )"
+          fi
         
           if [ -z "$GOPLATER_VERSION" ] || [ "$GOPLATER_VERSION" = "null" ]; then
             echo "Failed to determine the requested Goplater version" >&2
