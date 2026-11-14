@@ -54,7 +54,7 @@ By default, this templates the current directory and writes the generated files 
 | Input                  | Description                                                        | Default  |
 | ---------------------- | ------------------------------------------------------------------ | -------- |
 | `path`                 | File or directory to template                                      | `.`      |
-| `version`              | Goplater version to use                                            | `latest` |
+| `version`              | Goplater version to use (use `latest-prerelease` to include prereleases) | `latest` |
 | `source`               | Source directory containing files                                  | `.`      |
 | `output`               | Output directory for templated files                               | `.`      |
 | `recursive`            | Recursively process files                                          | `false`  |
