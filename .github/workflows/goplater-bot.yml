@@ -96,6 +96,11 @@ on:
         type: string
         default: "goplater/generated-updates"
 
+      branch-suffix:
+        description: Suffix appended to branch name when a new branch is made
+        type: string
+        default: ""
+
       base:
         description: Base branch for a pull request; defaults to the current branch
         type: string
@@ -351,16 +356,24 @@ jobs:
           GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.token || github.token }}
           BASE_BRANCH: ${{ inputs.base || github.head_ref || github.ref_name }}
           BRANCH_PREFIX: ${{ inputs.branch }}
+          BRANCH_SUFFIX: ${{ inputs.branch-suffix }}
           UPDATE_EXISTING_PR: ${{ inputs.update-existing-pr }}
           CREATE_PR: ${{ inputs.create-pr }}
           RUN_ID: ${{ github.run_id }}
         run: |
           set -euo pipefail
 
-          branch="$BRANCH_PREFIX"
+          # name used when a new branch is needed
+          new_branch="$BRANCH_PREFIX"
+          if [ -n "$BRANCH_SUFFIX" ]; then
+            new_branch="${BRANCH_PREFIX}-${BRANCH_SUFFIX}"
+          fi
 
           if [ "$UPDATE_EXISTING_PR" = "true" ]; then
+            branch="$new_branch"
+
             if [ "$CREATE_PR" = "true" ]; then
+              # match on prefix only, suffix may change per run
               existing="$(
                 gh pr list \
                   --state open \
@@ -374,6 +387,7 @@ jobs:
                     | .headRefName // empty
                   '
               )"
+
               if [ -n "$existing" ]; then
                 branch="$existing"
                 echo "Reusing existing PR branch: $branch"
@@ -382,7 +396,8 @@ jobs:
               fi
             fi
           else
-            branch="${BRANCH_PREFIX}-${RUN_ID}"
+            # always new branch, run id keeps it unique
+            branch="${new_branch}-${RUN_ID}"
           fi
 
           echo "Using PR branch: $branch"

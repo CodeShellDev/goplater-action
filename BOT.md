@@ -70,6 +70,7 @@ See [`goplater-action`](https://github.com/CodeShellDev/goplater-action)!
 | `commit-and-push` | Try to commit generated changes and push them directly         | `true`                       |
 | `create-pr`       | Create a pull request if direct commit and push fails          | `true`                       |
 | `branch`          | Branch to use when creating a pull request                     | `goplater/generated-updates` |
+| `branch-suffix`   | Suffix appended to branch name when a new branch is made       | `""`                         |
 | `base`            | Base branch for a pull request; defaults to the current branch | `""`                         |
 | `dry-run`         | Generate changes without committing, pushing, or creating a PR | `false`                      |
 
