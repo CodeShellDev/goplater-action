@@ -61,6 +61,7 @@ By default, this templates the current directory and writes the generated files 
 | `flatten`              | Flatten output paths                                               | `false`  |
 | `root`                 | Source root; output paths are relative to it (default is inferred) | `""`     |
 | `match`                | Regular expressions used to match files                            | `.*`     |
+| `allowed-inputs`       | Comma-separated allowed input directories                          | `""`     |
 | `allowed-outputs`      | Comma-separated allowed output directories                         | `""`     |
 | `trim-max-blank-lines` | Maximum blank lines kept around non-output actions (`-1` = off)    | `-1`     |
 | `dry-run`              | Show what would be written without changing anything               | `false`  |
