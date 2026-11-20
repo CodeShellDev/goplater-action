@@ -150,7 +150,7 @@ runs:
         INPUT_PATH: ${{ inputs.path }}
         OUTPUT: ${{ inputs.output }}
         SOURCE: ${{ inputs.source }}
-        ALLOWED_INPTS: ${{ inputs.allowed-inputs }}
+        ALLOWED_INPUTS: ${{ inputs.allowed-inputs }}
         ALLOWED_OUTPUTS: ${{ inputs.allowed-outputs }}
         MATCH: ${{ inputs.match }}
         TRIM_MAX_BLANK_LINES: ${{ inputs.trim-max-blank-lines }}
