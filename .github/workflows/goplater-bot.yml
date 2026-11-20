@@ -345,9 +345,10 @@ jobs:
 
       - name: Resolve PR branch
         id: pr-branch
+        if: ${{ steps.changes.outputs.changed == 'true' }}
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.token || github.token }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token || secrets.token || github.token }}
           BASE_BRANCH: ${{ inputs.base || github.head_ref || github.ref_name }}
           BRANCH_PREFIX: ${{ inputs.branch }}
           UPDATE_EXISTING_PR: ${{ inputs.update-existing-pr }}
@@ -357,32 +358,30 @@ jobs:
           set -euo pipefail
 
           branch="$BRANCH_PREFIX"
-          matched_pr=""
 
-          if [ "$UPDATE_EXISTING_PR" = "true" ] && [ "$CREATE_PR" = "true" ]; then
-            matched_pr="$(
-              gh pr list \
-                --state open \
-                --base "$BASE_BRANCH" \
-                --limit 100 \
-                --json number,headRefName,updatedAt \
-                --jq "
-                  map(select(
-                    .headRefName == \"$BRANCH_PREFIX\" or
-                    (.headRefName | startswith(\"$BRANCH_PREFIX-\"))
-                  ))
-                  | sort_by(.updatedAt)
-                  | last // empty
-                "
-            )"
-
-            if [ -n "$matched_pr" ]; then
-              branch="$(jq -r '.headRefName' <<< "$matched_pr")"
-              echo "Reusing existing Goplater PR #$(jq -r '.number' <<< "$matched_pr")"
-            else
-              echo "No existing Goplater PR found for base: $BASE_BRANCH"
+          if [ "$UPDATE_EXISTING_PR" = "true" ]; then
+            if [ "$CREATE_PR" = "true" ]; then
+              existing="$(
+                gh pr list \
+                  --state open \
+                  --base "$BASE_BRANCH" \
+                  --limit 100 \
+                  --json number,headRefName,updatedAt \
+                | jq -r --arg p "$BRANCH_PREFIX" '
+                    map(select(.headRefName == $p or (.headRefName | startswith($p + "-"))))
+                    | sort_by(.updatedAt)
+                    | last // empty
+                    | .headRefName // empty
+                  '
+              )"
+              if [ -n "$existing" ]; then
+                branch="$existing"
+                echo "Reusing existing PR branch: $branch"
+              else
+                echo "No existing PR for base: $BASE_BRANCH"
+              fi
             fi
-          elif [ "$UPDATE_EXISTING_PR" != "true" ]; then
+          else
             branch="${BRANCH_PREFIX}-${RUN_ID}"
           fi
 
