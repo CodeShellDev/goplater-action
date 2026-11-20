@@ -6,7 +6,7 @@ Goplater templates files and directories using Go templates, with support for re
 
 > [!IMPORTANT]
 > Searching for **Goplater Bot**?
-> Get the reusable workflow at <br> `github.com/codeshelldev/goplater-action/.github/workflows/goplater-bot.yml`!
+> See [`goplater-bot`](https://github.com/CodeShellDev/goplater-action/BOT.md)!
 
 ## Usage
 
@@ -51,21 +51,49 @@ By default, this templates the current directory and writes the generated files 
 
 ## Inputs
 
-| Input                  | Description                                                        | Default  |
-| ---------------------- | ------------------------------------------------------------------ | -------- |
-| `path`                 | File or directory to template                                      | `.`      |
+| Input                  | Description                                                              | Default  |
+| ---------------------- | ------------------------------------------------------------------------ | -------- |
+| `path`                 | File or directory to template                                            | `.`      |
 | `version`              | Goplater version to use (use `latest-prerelease` to include prereleases) | `latest` |
-| `source`               | Source directory containing files                                  | `.`      |
-| `output`               | Output directory for templated files                               | `.`      |
-| `recursive`            | Recursively process files                                          | `false`  |
-| `flatten`              | Flatten output paths                                               | `false`  |
-| `root`                 | Source root; output paths are relative to it (default is inferred) | `""`     |
-| `match`                | Regular expressions used to match files                            | `.*`     |
-| `allowed-inputs`       | Comma-separated allowed input directories                          | `""`     |
-| `allowed-outputs`      | Comma-separated allowed output directories                         | `""`     |
-| `trim-max-blank-lines` | Maximum blank lines kept around non-output actions (`-1` = off)    | `-1`     |
-| `dry-run`              | Show what would be written without changing anything               | `false`  |
-| `ignore-errors`        | Continue processing when errors occur                              | `false`  |
+| `source`               | Source directory containing files                                        | `.`      |
+| `output`               | Output directory for templated files                                     | `.`      |
+| `recursive`            | Recursively process files                                                | `false`  |
+| `flatten`              | Flatten output paths                                                     | `false`  |
+| `root`                 | Source root; output paths are relative to it (default is inferred)       | `""`     |
+| `match`                | Regular expressions used to match files                                  | `.*`     |
+| `allowed-inputs`       | Comma-separated allowed input directories                                | `""`     |
+| `allowed-outputs`      | Comma-separated allowed output directories                               | `""`     |
+| `trim-max-blank-lines` | Maximum blank lines kept around non-output actions (`-1` = off)          | `-1`     |
+| `dry-run`              | Show what would be written without changing anything                     | `false`  |
+| `ignore-errors`        | Continue processing when errors occur                                    | `false`  |
+
+### Version Selection
+
+The `version` input accepts:
+
+| Value               | Description                    |
+| ------------------- | ------------------------------ |
+| `latest`            | Latest stable Goplater release |
+| `latest-prerelease` | Latest prerelease              |
+| `v1.2.3`            | A specific release tag         |
+
+The action resolves version labels such as `latest` and `latest-prerelease` to the actual GitHub release tag before downloading the binary.
+
+The resolved tag is exposed through the `version` output.
+
+For example, if `version` is set to `latest` and the latest stable release is `v1.6.2`, the output will be `v1.6.2`, not `latest`.
+
+## Outputs
+
+The action exposes information about the Goplater binary that was downloaded.
+
+| Output         | Description                                   | Example                       |
+| -------------- | --------------------------------------------- | ----------------------------- |
+| `version`      | Actual Goplater release tag used              | `v1.6.2`                      |
+| `os`           | Operating system target used for the download | `linux`                       |
+| `arch`         | CPU architecture target used for the download | `amd64`                       |
+| `asset`        | Name of the downloaded release asset          | `goplater-v1.6.2-linux-amd64` |
+| `download-url` | URL used to download the release asset        | GitHub release asset URL      |
 
 ## Examples
 

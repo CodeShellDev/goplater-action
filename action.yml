@@ -61,6 +61,27 @@ inputs:
     required: false
     default: "false"
 
+outputs:
+  version:
+    description: Actual Goplater release tag used
+    value: ${{ steps.download.outputs.version }}
+
+  os:
+    description: Operating system target used for the download
+    value: ${{ steps.download.outputs.os }}
+
+  arch:
+    description: CPU architecture target used for the download
+    value: ${{ steps.download.outputs.arch }}
+
+  asset:
+    description: Name of the downloaded release asset
+    value: ${{ steps.download.outputs.asset }}
+
+  download-url:
+    description: URL used to download the Goplater release asset
+    value: ${{ steps.download.outputs.download-url }}
+
 runs:
   using: composite
   steps:
@@ -75,35 +96,30 @@ runs:
 
         if [ "$GOPLATER_VERSION" = "latest" ]; then
           release_url="https://api.github.com/repos/CodeShellDev/goplater/releases/latest"
+
+          GOPLATER_VERSION="$(
+            curl -fsSL \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "$release_url" |
+            jq -r '.tag_name'
+          )"
+
         elif [ "$GOPLATER_VERSION" = "latest-prerelease" ]; then
-          release_url="https://api.github.com/repos/CodeShellDev/goplater/releases?per_page=1"
-        else
-          release_url=""
+          release_url="https://api.github.com/repos/CodeShellDev/goplater/releases?per_page=100"
+
+          GOPLATER_VERSION="$(
+            curl -fsSL \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "$release_url" |
+            jq -r '[.[] | select(.prerelease == true)][0].tag_name // empty'
+          )"
         fi
-        
-        if [ -n "$release_url" ]; then
-          if [ "$GOPLATER_VERSION" = "latest" ]; then
-            GOPLATER_VERSION="$(
-              curl -fsSL \
-                -H "Authorization: Bearer $GH_TOKEN" \
-                -H "Accept: application/vnd.github+json" \
-                "$release_url" |
-              jq -r '.tag_name'
-            )"
-          else
-            GOPLATER_VERSION="$(
-              curl -fsSL \
-                -H "Authorization: Bearer $GH_TOKEN" \
-                -H "Accept: application/vnd.github+json" \
-                "$release_url" |
-              jq -r '.[0].tag_name'
-            )"
-          fi
-        
-          if [ -z "$GOPLATER_VERSION" ] || [ "$GOPLATER_VERSION" = "null" ]; then
-            echo "Failed to determine the requested Goplater version" >&2
-            exit 1
-          fi
+
+        if [ -z "$GOPLATER_VERSION" ] || [ "$GOPLATER_VERSION" = "null" ]; then
+          echo "Failed to determine the requested Goplater version" >&2
+          exit 1
         fi
 
         case "$(uname -s)" in
@@ -134,10 +150,19 @@ runs:
         url="https://github.com/CodeShellDev/goplater/releases/download/${GOPLATER_VERSION}/${asset}"
         binary="$RUNNER_TEMP/goplater${extension}"
 
-        echo "Downloading ${asset}"
+        echo "Goplater version: ${GOPLATER_VERSION}"
+        echo "Platform: ${os}/${arch}"
+        echo "Asset: ${asset}"
+        echo "Download URL: ${url}"
+
         curl -fL "$url" -o "$binary"
         chmod +x "$binary"
 
+        echo "version=$GOPLATER_VERSION" >> "$GITHUB_OUTPUT"
+        echo "os=$os" >> "$GITHUB_OUTPUT"
+        echo "arch=$arch" >> "$GITHUB_OUTPUT"
+        echo "asset=$asset" >> "$GITHUB_OUTPUT"
+        echo "download-url=$url" >> "$GITHUB_OUTPUT"
         echo "binary=$binary" >> "$GITHUB_OUTPUT"
 
     - name: Run Goplater

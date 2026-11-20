@@ -70,6 +70,16 @@ on:
         type: number
         default: -1
 
+      dry-run:
+        description: Generate changes without committing, pushing, or creating a PR
+        type: boolean
+        default: false
+
+      ignore-errors:
+        description: Continue processing when errors occur
+        type: boolean
+        default: false
+
       # Git behavior
       commit-and-push:
         description: Try to commit generated changes and push them directly
@@ -179,10 +189,10 @@ on:
         type: boolean
         default: true
 
-      dry-run:
-        description: Generate changes without committing, pushing, or creating a PR
+      update-existing-pr:
+        description: Update an existing open Goplater PR instead of creating a new one
         type: boolean
-        default: false
+        default: true
 
       # GitHub App
       client-id:
@@ -258,6 +268,7 @@ jobs:
 
       - name: Run Goplater
         uses: codeshelldev/goplater-action@v0.0.8
+        id: run
         with:
           path: ${{ inputs.path }}
           version: ${{ inputs.version }}
@@ -270,6 +281,8 @@ jobs:
           allowed-inputs: ${{ inputs.allowed-inputs }}
           allowed-outputs: ${{ inputs.allowed-outputs }}
           trim-max-blank-lines: ${{ inputs.trim-max-blank-lines }}
+          dry-run: ${{ inputs.dry-run }}
+          ignore-errors: ${{ inputs.ignore-errors }}
 
       - name: Check for changes
         id: changes
@@ -340,14 +353,15 @@ jobs:
           COAUTHOR_TRAILER: ${{ steps.identity.outputs.coauthor_trailer }}
           SERVER_URL: ${{ github.server_url }}
           REPOSITORY: ${{ github.repository }}
-          BRANCH: ${{ inputs.branch }}
+          BRANCH: ${{ inputs.update-existing-pr && inputs.branch || format('{0}-{1}', inputs.branch, github.run_id) }}
+          UPDATE_EXISTING_PR: ${{ inputs.update-existing-pr }}
           BASE: ${{ inputs.base || github.head_ref || github.ref_name }}
           ACTOR: ${{ github.actor }}
           SHA: ${{ github.sha }}
           RUN_ID: ${{ github.run_id }}
           WORKFLOW: ${{ github.workflow }}
           EVENT: ${{ github.event_name }}
-          GOPLATER_VERSION: ${{ inputs.version }}
+          GOPLATER_VERSION: ${{ steps.run.outputs.version }}
         run: |
           import datetime
           import os
@@ -530,7 +544,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ steps.app-token.outputs.token || secrets.token || github.token }}
-          branch: ${{ inputs.branch }}
+          branch: ${{ inputs.update-existing-pr && inputs.branch || format('{0}-{1}', inputs.branch, github.run_id) }}
           base: ${{ inputs.base || github.head_ref || github.ref_name }}
           commit-message: ${{ steps.meta.outputs.commit_message }}
           author: ${{ steps.identity.outputs.author_name }} <${{ steps.identity.outputs.author_email }}>
