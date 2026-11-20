@@ -237,7 +237,8 @@ jobs:
     # Loop guard: ignore our own commits and our own PR branch
     if: >-
       ${{ !contains(github.event.head_commit.message, 'Goplater-Generated: true')
-      && github.head_ref != inputs.branch }}
+      && github.head_ref != inputs.branch
+      && !startsWith(github.head_ref, format('{0}-', inputs.branch)) }}
 
     concurrency:
       group: goplater-${{ github.repository }}-${{ github.head_ref || github.ref_name }}
@@ -342,6 +343,52 @@ jobs:
           echo "Author:    $AUTHOR_NAME <$AUTHOR_EMAIL>"
           echo "Co-author: ${trailer:-none}"
 
+      - name: Resolve PR branch
+        id: pr-branch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.token || github.token }}
+          BASE_BRANCH: ${{ inputs.base || github.head_ref || github.ref_name }}
+          BRANCH_PREFIX: ${{ inputs.branch }}
+          UPDATE_EXISTING_PR: ${{ inputs.update-existing-pr }}
+          CREATE_PR: ${{ inputs.create-pr }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          branch="$BRANCH_PREFIX"
+          matched_pr=""
+
+          if [ "$UPDATE_EXISTING_PR" = "true" ] && [ "$CREATE_PR" = "true" ]; then
+            matched_pr="$(
+              gh pr list \
+                --state open \
+                --base "$BASE_BRANCH" \
+                --limit 100 \
+                --json number,headRefName,updatedAt \
+                --jq "
+                  map(select(
+                    .headRefName == \"$BRANCH_PREFIX\" or
+                    (.headRefName | startswith(\"$BRANCH_PREFIX-\"))
+                  ))
+                  | sort_by(.updatedAt)
+                  | last // empty
+                "
+            )"
+
+            if [ -n "$matched_pr" ]; then
+              branch="$(jq -r '.headRefName' <<< "$matched_pr")"
+              echo "Reusing existing Goplater PR #$(jq -r '.number' <<< "$matched_pr")"
+            else
+              echo "No existing Goplater PR found for base: $BASE_BRANCH"
+            fi
+          elif [ "$UPDATE_EXISTING_PR" != "true" ]; then
+            branch="${BRANCH_PREFIX}-${RUN_ID}"
+          fi
+
+          echo "Using PR branch: $branch"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+
       - name: Render templates
         id: meta
         if: ${{ steps.changes.outputs.changed == 'true' }}
@@ -353,8 +400,7 @@ jobs:
           COAUTHOR_TRAILER: ${{ steps.identity.outputs.coauthor_trailer }}
           SERVER_URL: ${{ github.server_url }}
           REPOSITORY: ${{ github.repository }}
-          BRANCH: ${{ inputs.update-existing-pr && inputs.branch || format('{0}-{1}', inputs.branch, github.run_id) }}
-          UPDATE_EXISTING_PR: ${{ inputs.update-existing-pr }}
+          BRANCH: ${{ steps.pr-branch.outputs.branch }}
           BASE: ${{ inputs.base || github.head_ref || github.ref_name }}
           ACTOR: ${{ github.actor }}
           SHA: ${{ github.sha }}
@@ -544,7 +590,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ steps.app-token.outputs.token || secrets.token || github.token }}
-          branch: ${{ inputs.update-existing-pr && inputs.branch || format('{0}-{1}', inputs.branch, github.run_id) }}
+          branch: ${{ steps.pr-branch.outputs.branch }}
           base: ${{ inputs.base || github.head_ref || github.ref_name }}
           commit-message: ${{ steps.meta.outputs.commit_message }}
           author: ${{ steps.identity.outputs.author_name }} <${{ steps.identity.outputs.author_email }}>
