@@ -96,30 +96,35 @@ runs:
 
         if [ "$GOPLATER_VERSION" = "latest" ]; then
           release_url="https://api.github.com/repos/CodeShellDev/goplater/releases/latest"
-
-          GOPLATER_VERSION="$(
-            curl -fsSL \
-              -H "Authorization: Bearer $GH_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              "$release_url" |
-            jq -r '.tag_name'
-          )"
-
         elif [ "$GOPLATER_VERSION" = "latest-prerelease" ]; then
-          release_url="https://api.github.com/repos/CodeShellDev/goplater/releases?per_page=100"
-
-          GOPLATER_VERSION="$(
-            curl -fsSL \
-              -H "Authorization: Bearer $GH_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              "$release_url" |
-            jq -r '[.[] | select(.prerelease == true)][0].tag_name // empty'
-          )"
+          release_url="https://api.github.com/repos/CodeShellDev/goplater/releases?per_page=1"
+        else
+          release_url=""
         fi
 
-        if [ -z "$GOPLATER_VERSION" ] || [ "$GOPLATER_VERSION" = "null" ]; then
-          echo "Failed to determine the requested Goplater version" >&2
-          exit 1
+        if [ -n "$release_url" ]; then
+          if [ "$GOPLATER_VERSION" = "latest" ]; then
+            GOPLATER_VERSION="$(
+              curl -fsSL \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "$release_url" |
+              jq -r '.tag_name'
+            )"
+          else
+            GOPLATER_VERSION="$(
+              curl -fsSL \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                -H "Accept: application/vnd.github+json" \
+                "$release_url" |
+              jq -r '.[0].tag_name'
+            )"
+          fi
+
+          if [ -z "$GOPLATER_VERSION" ] || [ "$GOPLATER_VERSION" = "null" ]; then
+            echo "Failed to determine the requested Goplater version" >&2
+            exit 1
+          fi
         fi
 
         case "$(uname -s)" in
@@ -158,12 +163,14 @@ runs:
         curl -fL "$url" -o "$binary"
         chmod +x "$binary"
 
-        echo "version=$GOPLATER_VERSION" >> "$GITHUB_OUTPUT"
-        echo "os=$os" >> "$GITHUB_OUTPUT"
-        echo "arch=$arch" >> "$GITHUB_OUTPUT"
-        echo "asset=$asset" >> "$GITHUB_OUTPUT"
-        echo "download-url=$url" >> "$GITHUB_OUTPUT"
-        echo "binary=$binary" >> "$GITHUB_OUTPUT"
+        {
+          echo "version=$GOPLATER_VERSION"
+          echo "os=$os"
+          echo "arch=$arch"
+          echo "asset=$asset"
+          echo "download-url=$url"
+          echo "binary=$binary"
+        } >> "$GITHUB_OUTPUT"
 
     - name: Run Goplater
       shell: bash

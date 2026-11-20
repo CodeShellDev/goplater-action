@@ -267,7 +267,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run Goplater
-        uses: codeshelldev/goplater-action@v0.0.9
+        uses: codeshelldev/goplater-action@v0.0.10
         id: run
         with:
           path: ${{ inputs.path }}

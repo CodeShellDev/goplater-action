@@ -74,7 +74,7 @@ The `version` input accepts:
 | Value               | Description                    |
 | ------------------- | ------------------------------ |
 | `latest`            | Latest stable Goplater release |
-| `latest-prerelease` | Latest prerelease              |
+| `latest-prerelease` | Latest (includes prereleases)  |
 | `v1.2.3`            | A specific release tag         |
 
 The action resolves version labels such as `latest` and `latest-prerelease` to the actual GitHub release tag before downloading the binary.
