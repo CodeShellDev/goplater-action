@@ -55,6 +55,11 @@ on:
         type: string
         default: ".*"
 
+      allowed-inputs:
+        description: Comma-separated allowed input directories
+        type: string
+        default: ""
+
       allowed-outputs:
         description: Comma-separated allowed output directories
         type: string
@@ -252,7 +257,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run Goplater
-        uses: codeshelldev/goplater-action@v0.0.7
+        uses: codeshelldev/goplater-action@v0.0.8
         with:
           path: ${{ inputs.path }}
           version: ${{ inputs.version }}
@@ -262,6 +267,7 @@ jobs:
           flatten: ${{ inputs.flatten }}
           root: ${{ inputs.root }}
           match: ${{ inputs.match }}
+          allowed-inputs: ${{ inputs.allowed-inputs }}
           allowed-outputs: ${{ inputs.allowed-outputs }}
           trim-max-blank-lines: ${{ inputs.trim-max-blank-lines }}
 
