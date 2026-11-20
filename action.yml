@@ -39,6 +39,10 @@ inputs:
     description: Regular expressions used to match files
     default: ".*"
 
+  allowed-inputs:
+    description: Comma-separated allowed input directories
+    default: ""
+
   allowed-outputs:
     description: Comma-separated allowed output directories
     default: ""
@@ -146,6 +150,7 @@ runs:
         INPUT_PATH: ${{ inputs.path }}
         OUTPUT: ${{ inputs.output }}
         SOURCE: ${{ inputs.source }}
+        ALLOWED_INPTS: ${{ inputs.allowed-inputs }}
         ALLOWED_OUTPUTS: ${{ inputs.allowed-outputs }}
         MATCH: ${{ inputs.match }}
         TRIM_MAX_BLANK_LINES: ${{ inputs.trim-max-blank-lines }}
@@ -159,6 +164,7 @@ runs:
           "--recursive=$RECURSIVE"
           "--flatten=$FLATTEN"
           "--root=$ROOT"
+          "--allowed-inputs=$ALLOWED_INPUTS"
           "--allowed-outputs=$ALLOWED_OUTPUTS"
           "--output=$OUTPUT"
           "--source=$SOURCE"
