@@ -206,6 +206,6 @@ runs:
           "--ignore-errors=$IGNORE_ERRORS"
         )
 
-        echo "${args[@]}"
+        printf '<%s>\n' "${args[@]}"
 
         "$GOPLATER_BINARY" template "${args[@]}"
