@@ -45,11 +45,11 @@ inputs:
 
   hidden:
     description: Include dotfiles and dotfolders
-    default: ""
+    default: "false"
 
   binary:
     description: Include binary files
-    default: ""
+    default: "false"
 
   allowed-inputs:
     description: Comma-separated allowed input directories
