@@ -51,21 +51,22 @@ By default, this templates the current directory and writes the generated files 
 
 ## Inputs
 
-| Input                  | Description                                                              | Default  |
-| ---------------------- | ------------------------------------------------------------------------ | -------- |
-| `path`                 | File or directory to template                                            | `.`      |
-| `version`              | Goplater version to use (use `latest-prerelease` to include prereleases) | `latest` |
-| `source`               | Source directory containing files                                        | `.`      |
-| `output`               | Output directory for templated files                                     | `.`      |
-| `recursive`            | Recursively process files                                                | `false`  |
-| `flatten`              | Flatten output paths                                                     | `false`  |
-| `root`                 | Source root; output paths are relative to it (default is inferred)       | `""`     |
-| `match`                | Regular expressions used to match files                                  | `.*`     |
-| `allowed-inputs`       | Comma-separated allowed input directories                                | `""`     |
-| `allowed-outputs`      | Comma-separated allowed output directories                               | `""`     |
-| `trim-max-blank-lines` | Maximum blank lines kept around non-output actions (`-1` = off)          | `-1`     |
-| `dry-run`              | Show what would be written without changing anything                     | `false`  |
-| `ignore-errors`        | Continue processing when errors occur                                    | `false`  |
+| Input                  | Description                                                        | Default  |
+| ---------------------- | ------------------------------------------------------------------ | -------- |
+| `path`                 | File or directory to template                                      | `.`      |
+| `version`              | Goplater version to use (`latest-prerelease` includes prereleases) | `latest` |
+| `source`               | Source directory containing files                                  | `.`      |
+| `output`               | Output directory for templated files                               | `.`      |
+| `recursive`            | Recursively process files                                          | `false`  |
+| `flatten`              | Flatten output paths                                               | `false`  |
+| `root`                 | Source root; output paths are relative to it (default is inferred) | `""`     |
+| `match`                | Regexes used to match files (one per line)                         | `.*`     |
+| `exclude`              | Regexes used to exclude files (one per line)                       | `""`     |
+| `allowed-inputs`       | Comma-separated allowed input directories                          | `""`     |
+| `allowed-outputs`      | Comma-separated allowed output directories                         | `""`     |
+| `trim-max-blank-lines` | Maximum blank lines kept around non-output actions (`-1` = off)    | `-1`     |
+| `dry-run`              | Show what would be written without changing anything               | `false`  |
+| `ignore-errors`        | Continue processing when errors occur                              | `false`  |
 
 ### Version Selection
 
@@ -145,7 +146,8 @@ For example:
     path: templates/
     output: generated/
     recursive: true
-    match: ".*\\.yaml$"
+    match: |
+      .*\\.yaml$
 ```
 
 This processes only files ending in `.yaml`.

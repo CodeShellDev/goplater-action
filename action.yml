@@ -16,7 +16,7 @@ inputs:
     default: "latest"
 
   source:
-    description: Source directory containing files
+    description: Source directory, ~/ is relative to it
     default: "."
 
   output:
@@ -36,8 +36,20 @@ inputs:
     default: ""
 
   match:
-    description: Regular expressions used to match files
+    description: Regexes to match files (one per line)
     default: ".*"
+
+  exclude:
+    description: Regexes to exclude files (one per line)
+    default: ""
+
+  hidden:
+    description: Include dotfiles and dotfolders
+    default: ""
+
+  binary:
+    description: Include binary files
+    default: ""
 
   allowed-inputs:
     description: Comma-separated allowed input directories
@@ -185,6 +197,9 @@ runs:
         ALLOWED_INPUTS: ${{ inputs.allowed-inputs }}
         ALLOWED_OUTPUTS: ${{ inputs.allowed-outputs }}
         MATCH: ${{ inputs.match }}
+        EXCLUDE: ${{ inputs.exclude }}
+        HIDDEN: ${{ inputs.hidden }}
+        BINARY: ${{ inputs.binary }}
         TRIM_MAX_BLANK_LINES: ${{ inputs.trim-max-blank-lines }}
         DRY_RUN: ${{ inputs.dry-run }}
         IGNORE_ERRORS: ${{ inputs.ignore-errors }}
@@ -200,10 +215,19 @@ runs:
           "--allowed-outputs=$ALLOWED_OUTPUTS"
           "--output=$OUTPUT"
           "--source=$SOURCE"
-          "--match=$MATCH"
+          "--hidden=$HIDDEN"
+          "--binary=$BINARY"
           "--trim-max-blank-lines=$TRIM_MAX_BLANK_LINES"
           "--dry-run=$DRY_RUN"
           "--ignore-errors=$IGNORE_ERRORS"
         )
+
+        while IFS= read -r pattern; do
+          [[ -n "$pattern" ]] && args+=("--match=$pattern")
+        done <<< "$MATCH"
+
+        while IFS= read -r pattern; do
+          [[ -n "$pattern" ]] && args+=("--exclude=$pattern")
+        done <<< "$EXCLUDE"
 
         "$GOPLATER_BINARY" template "${args[@]}"
