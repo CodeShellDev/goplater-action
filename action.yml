@@ -40,7 +40,7 @@ inputs:
     default: ".*"
 
   exclude:
-    description: Regexes to exclude files (one per line)
+    description: Regexes to exclude files/folders (one per line)
     default: ""
 
   hidden:
