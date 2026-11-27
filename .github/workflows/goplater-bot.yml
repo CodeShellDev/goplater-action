@@ -51,9 +51,24 @@ on:
         default: ""
 
       match:
-        description: Regular expressions used to match files
+        description: Regexes to match files (one per line)
         type: string
         default: ".*"
+
+      exclude:
+        description: Regexes to exclude files (one per line)
+        type: string
+        default: ""
+
+      hidden:
+        description: Include dotfiles and dotfolders
+        type: string
+        default: ""
+
+      binary:
+        description: Include binary files
+        type: string
+        default: ""
 
       allowed-inputs:
         description: Comma-separated allowed input directories
@@ -273,7 +288,7 @@ jobs:
           fetch-depth: 0
 
       - name: Run Goplater
-        uses: codeshelldev/goplater-action@v0.0.10
+        uses: codeshelldev/goplater-action@v0.0.11
         id: run
         with:
           path: ${{ inputs.path }}
@@ -284,6 +299,9 @@ jobs:
           flatten: ${{ inputs.flatten }}
           root: ${{ inputs.root }}
           match: ${{ inputs.match }}
+          exclude: ${{ inputs.exclude }}
+          hidden: ${{ inputs.hidden }}
+          binary: ${{ inputs.binary }}
           allowed-inputs: ${{ inputs.allowed-inputs }}
           allowed-outputs: ${{ inputs.allowed-outputs }}
           trim-max-blank-lines: ${{ inputs.trim-max-blank-lines }}
